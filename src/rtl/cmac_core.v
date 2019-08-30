@@ -69,8 +69,10 @@ module cmac_core(
   localparam CTRL_IDLE        = 0;
   localparam CTRL_INIT_CORE   = 1;
   localparam CTRL_GEN_SUBKEYS = 2;
-  localparam CTRL_NEXT_BLOCK  = 3;
-  localparam CTRL_FINAL_BLOCK = 4;
+  localparam CTRL_NEXT_INIT   = 3;
+  localparam CTRL_NEXT_BLOCK  = 4;
+  localparam CTRL_FINAL_INIT  = 5;
+  localparam CTRL_FINAL_BLOCK = 6;
 
   localparam R128 = {120'h0, 8'b10000111};
   localparam AES_BLOCK_SIZE = 128;
@@ -91,6 +93,12 @@ module cmac_core(
   reg           ready_reg;
   reg           ready_new;
   reg           ready_we;
+
+  reg [127 : 0] block_reg;
+  reg           block_we;
+
+  reg [7 : 0]   final_size_reg;
+  reg [7 : 0]   final_size_we;
 
   reg [127 : 0] k1_reg;
   reg [127 : 0] k1_new;
@@ -158,6 +166,8 @@ module cmac_core(
     begin : reg_update
       if (!reset_n)
         begin
+          block_reg      <= 128'h0;
+          final_size_reg <= 8'h0;
           k1_reg         <= 128'h0;
           k2_reg         <= 128'h0;
           result_reg     <= 128'h0;
@@ -167,6 +177,12 @@ module cmac_core(
         end
       else
         begin
+          if (block_we)
+            block_reg <= block;
+
+          if (final_size_we)
+            final_size_reg <= final_size;
+
           if (result_we)
             result_reg <= result_new;
 
@@ -229,35 +245,35 @@ module cmac_core(
       // We add a one to bit at the first non-data position.
       mask = 128'b0;
 
-      if (final_size[0])
+      if (final_size_reg[0])
         mask = {1'b1, mask[127 :  1]};
 
-      if (final_size[1])
+      if (final_size_reg[1])
         mask = {2'h3, mask[127 :  2]};
 
-      if (final_size[2])
+      if (final_size_reg[2])
         mask = {4'hf, mask[127 :  4]};
 
-      if (final_size[3])
+      if (final_size_reg[3])
         mask = {8'hff, mask[127 :  8]};
 
-      if (final_size[4])
+      if (final_size_reg[4])
         mask = {16'hffff, mask[127 :  16]};
 
-      if (final_size[5])
+      if (final_size_reg[5])
         mask = {32'hffffffff, mask[127 :  32]};
 
-      if (final_size[6])
+      if (final_size_reg[6])
         mask = {64'hffffffff_ffffffff, mask[127 :  64]};
 
-      masked_block = block & mask;
+      masked_block = block_reg & mask;
       padded_block = masked_block;
-      padded_block[(127 - final_size[6 : 0])] = 1'b1;
+      padded_block[(127 - final_size_reg[6 : 0])] = 1'b1;
 
 
       // Tweak of final block. Based on if the final block is full or not.
-      if (final_size == AES_BLOCK_SIZE)
-        tweaked_block = k1_reg ^ block;
+      if (final_size_reg == AES_BLOCK_SIZE)
+        tweaked_block = k1_reg ^ block_reg;
       else
         tweaked_block = k2_reg ^ padded_block;
 
@@ -269,7 +285,7 @@ module cmac_core(
           aes_block = 128'h0;
 
         BMUX_MESSAGE:
-          aes_block  = result_reg ^ block;
+          aes_block  = result_reg ^ block_reg;
 
         BMUX_TWEAK:
           aes_block  = result_reg ^ tweaked_block;
@@ -284,6 +300,8 @@ module cmac_core(
   //----------------------------------------------------------------
   always @*
     begin : cmac_ctrl
+      block_we          = 1'h0;
+      final_size_we     = 1'h0;
       aes_init          = 1'h0;
       aes_next          = 1'h0;
       bmux_ctrl         = BMUX_ZERO;
@@ -314,21 +332,20 @@ module cmac_core(
 
             if (next)
               begin
+                block_we      = 1'h1;
                 ready_new     = 1'h0;
                 ready_we      = 1'h1;
-                aes_next      = 1'h1;
-                bmux_ctrl     = BMUX_MESSAGE;
-                cmac_ctrl_new = CTRL_NEXT_BLOCK;
+                cmac_ctrl_new = CTRL_NEXT_INIT;
                 cmac_ctrl_we  = 1'h1;
               end
 
             if (finalize)
               begin
+                block_we      = 1'h1;
+                final_size_we = 1'h1;
                 ready_new     = 1'h0;
                 ready_we      = 1'h1;
-                aes_next      = 1'h1;
-                bmux_ctrl     = BMUX_TWEAK;
-                cmac_ctrl_new = CTRL_FINAL_BLOCK;
+                cmac_ctrl_new = CTRL_FINAL_INIT;
                 cmac_ctrl_we  = 1'h1;
               end
           end
@@ -356,6 +373,14 @@ module cmac_core(
               end
           end
 
+        CTRL_NEXT_INIT:
+          begin
+            aes_next      = 1'h1;
+            bmux_ctrl     = BMUX_MESSAGE;
+            cmac_ctrl_new = CTRL_NEXT_BLOCK;
+            cmac_ctrl_we  = 1'h1;
+          end
+
         CTRL_NEXT_BLOCK:
           begin
             bmux_ctrl = BMUX_MESSAGE;
@@ -367,6 +392,15 @@ module cmac_core(
                 cmac_ctrl_new     = CTRL_IDLE;
                 cmac_ctrl_we      = 1'h1;
               end
+          end
+
+
+        CTRL_FINAL_INIT:
+          begin
+            aes_next      = 1'h1;
+            bmux_ctrl     = BMUX_TWEAK;
+            cmac_ctrl_new = CTRL_FINAL_BLOCK;
+            cmac_ctrl_we  = 1'h1;
           end
 
         CTRL_FINAL_BLOCK:
