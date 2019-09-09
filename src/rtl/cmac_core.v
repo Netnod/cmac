@@ -98,7 +98,7 @@ module cmac_core(
   reg           block_we;
 
   reg [7 : 0]   final_size_reg;
-  reg [7 : 0]   final_size_we;
+  reg           final_size_we;
 
   reg [127 : 0] k1_reg;
   reg [127 : 0] k1_new;
