@@ -65,7 +65,6 @@ module tb_cmac();
 
   localparam ADDR_STATUS      = 8'h0a;
   localparam STATUS_READY_BIT = 0;
-  localparam STATUS_VALID_BIT = 1;
 
   localparam ADDR_FINAL_SIZE  = 8'h0b;
 
@@ -183,15 +182,15 @@ module tb_cmac();
       $display("config: keylength = 0x%01x, final blocklength = 0x%01x",
                dut.keylen_reg, dut.final_size_reg);
       $display("k1 = 0x%016x, k2 = 0x%016x", dut.cmac_inst.k1_reg, dut.cmac_inst.k2_reg);
-      $display("ready = 0x%01x, valid = 0x%01x, result_we = 0x%01x, block_mux = 0x%02x, ctrl_state = 0x%02x",
-               dut.core_ready, dut.core_valid, dut.cmac_inst.result_we, dut.cmac_inst.bmux_ctrl, dut.cmac_inst.cmac_ctrl_reg);
+      $display("ready = 0x%01x, result_we = 0x%01x, block_mux = 0x%02x, ctrl_state = 0x%02x",
+               dut.core_ready, dut.cmac_inst.result_we, dut.cmac_inst.bmux_ctrl, dut.cmac_inst.cmac_ctrl_reg);
       $display("block:  0x%08x%08x%08x%08x",
                dut.block_reg[0], dut.block_reg[1], dut.block_reg[2], dut.block_reg[3]);
       $display("tweaked_block: 0x%032x", dut.cmac_inst.cmac_datapath.tweaked_block);
       $display("result: 0x%032x", dut.core_result);
       $display("");
-      $display("init = 0x%01x, next = 0x%01x, core_ready = 0x%01x, core_valid = 0x%01x",
-               dut.init_reg, dut.next_reg, dut.core_ready, dut.core_valid);
+      $display("init = 0x%01x, next = 0x%01x, core_ready = 0x%01x",
+               dut.init_reg, dut.next_reg, dut.core_ready);
       $display("core block:  0x%032x", dut.core_block);
       $display("core result: 0x%032x", dut.core_result);
       $display("");
@@ -503,13 +502,6 @@ module tb_cmac();
       if (dut.final_size_reg != 8'h0)
         begin
           $display("TC1: ERROR - final_size_reg not properly reset.");
-          tc_correct = 0;
-          inc_error_ctr();
-        end
-
-      if (dut.cmac_inst.valid_reg != 0)
-        begin
-          $display("TC1: ERROR - valid_reg not properly reset.");
           tc_correct = 0;
           inc_error_ctr();
         end

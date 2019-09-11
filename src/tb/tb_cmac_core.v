@@ -48,52 +48,11 @@ module tb_cmac_core();
   localparam CLK_HALF_PERIOD = 1;
   localparam CLK_PERIOD      = 2 * CLK_HALF_PERIOD;
 
-
-  // The DUT address map.
-  localparam ADDR_NAME0       = 8'h00;
-  localparam ADDR_NAME1       = 8'h01;
-  localparam ADDR_VERSION     = 8'h02;
-
-  localparam ADDR_CTRL        = 8'h08;
-  localparam CTRL_INIT_BIT    = 0;
-  localparam CTRL_NEXT_BIT    = 1;
-  localparam CTRL_FINAL_BIT   = 2;
-
-  localparam ADDR_CONFIG      = 8'h09;
-  localparam CTRL_KEYLEN_BIT  = 0;
-
-  localparam ADDR_STATUS      = 8'h0a;
-  localparam STATUS_READY_BIT = 0;
-  localparam STATUS_VALID_BIT = 1;
-
-  localparam ADDR_FINAL_SIZE  = 8'h0b;
-
-  localparam ADDR_KEY0        = 8'h10;
-  localparam ADDR_KEY1        = 8'h11;
-  localparam ADDR_KEY2        = 8'h12;
-  localparam ADDR_KEY3        = 8'h13;
-  localparam ADDR_KEY4        = 8'h14;
-  localparam ADDR_KEY5        = 8'h15;
-  localparam ADDR_KEY6        = 8'h16;
-  localparam ADDR_KEY7        = 8'h17;
-
-  localparam ADDR_BLOCK0      = 8'h20;
-  localparam ADDR_BLOCK1      = 8'h21;
-  localparam ADDR_BLOCK2      = 8'h22;
-  localparam ADDR_BLOCK3      = 8'h23;
-
-  localparam ADDR_RESULT0     = 8'h30;
-  localparam ADDR_RESULT1     = 8'h31;
-  localparam ADDR_RESULT2     = 8'h32;
-  localparam ADDR_RESULT3     = 8'h33;
-
-
   localparam AES_128_BIT_KEY = 0;
   localparam AES_256_BIT_KEY = 1;
 
   localparam AES_DECIPHER = 1'b0;
   localparam AES_ENCIPHER = 1'b1;
-
 
   localparam AES_BLOCK_SIZE = 128;
 
@@ -121,7 +80,6 @@ module tb_cmac_core();
   reg [127 : 0]  tb_block;
   wire [127 : 0] tb_result;
   wire           tb_ready;
-  wire           tb_valid;
 
 
   //----------------------------------------------------------------
@@ -139,8 +97,7 @@ module tb_cmac_core();
            .finalize(tb_finalize),
            .block(tb_block),
            .result(tb_result),
-           .ready(tb_ready),
-           .valid(tb_valid)
+           .ready(tb_ready)
           );
 
 
@@ -198,8 +155,8 @@ module tb_cmac_core();
 
       $display("Internal states:");
       $display("k1 = 0x%016x, k2 = 0x%016x", dut.k1_reg, dut.k2_reg);
-      $display("ready = 0x%01x, valid = 0x%01x, result_we = 0x%01x, block_mux = 0x%02x, ctrl_state = 0x%02x",
-               dut.ready, dut.valid, dut.result_we, dut.bmux_ctrl, dut.cmac_ctrl_reg);
+      $display("ready = 0x%01x, result_we = 0x%01x, block_mux = 0x%02x, ctrl_state = 0x%02x",
+               dut.ready, dut.result_we, dut.bmux_ctrl, dut.cmac_ctrl_reg);
       $display("tweaked_block: 0x%032x", dut.cmac_datapath.tweaked_block);
       $display("");
     end

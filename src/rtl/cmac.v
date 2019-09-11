@@ -64,7 +64,6 @@ module cmac(
 
   localparam ADDR_STATUS       = 8'h0a;
   localparam STATUS_READY_BIT  = 0;
-  localparam STATUS_VALID_BIT  = 1;
 
   localparam ADDR_FINAL_SIZE   = 8'h0b;
 
@@ -116,7 +115,6 @@ module cmac(
   reg [31 : 0]   tmp_read_data;
 
   wire           core_ready;
-  wire           core_valid;
   wire [255 : 0] core_key;
   wire [127 : 0] core_block;
   wire [127 : 0] core_result;
@@ -152,8 +150,7 @@ module cmac(
                       .block(core_block),
 
                       .result(core_result),
-                      .ready(core_ready),
-                      .valid(core_valid)
+                      .ready(core_ready)
                      );
 
 
@@ -254,7 +251,7 @@ module cmac(
                 ADDR_NAME1:      tmp_read_data = CORE_NAME1;
                 ADDR_VERSION:    tmp_read_data = CORE_VERSION;
                 ADDR_CTRL:       tmp_read_data = {31'h0, keylen_reg};
-                ADDR_STATUS:     tmp_read_data = {30'h0, core_valid, core_ready};
+                ADDR_STATUS:     tmp_read_data = {31'h0, core_ready};
                 ADDR_FINAL_SIZE: tmp_read_data = {24'h0, final_size_reg};
                 ADDR_RESULT0:    tmp_read_data = core_result[127 : 96];
                 ADDR_RESULT1:    tmp_read_data = core_result[95 : 64];

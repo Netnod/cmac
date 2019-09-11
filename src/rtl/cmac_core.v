@@ -54,8 +54,7 @@ module cmac_core(
                  input wire [127 : 0]  block,
 
                  output wire [127 : 0] result,
-                 output wire           ready,
-                 output wire           valid
+                 output wire           ready
                 );
 
 
@@ -87,9 +86,6 @@ module cmac_core(
   reg           reset_result_reg;
   reg           update_result_reg;
 
-  reg           valid_reg;
-  reg           valid_new;
-  reg           valid_we;
   reg           ready_reg;
   reg           ready_new;
   reg           ready_we;
@@ -120,7 +116,6 @@ module cmac_core(
   wire           aes_ready;
   reg  [127 : 0] aes_block;
   wire [127 : 0] aes_result;
-  wire           aes_valid;
 
   reg [1 : 0]    bmux_ctrl;
 
@@ -132,7 +127,6 @@ module cmac_core(
 
   assign result = result_reg;
   assign ready  = ready_reg;
-  assign valid  = valid_reg;
 
 
   //----------------------------------------------------------------
@@ -151,8 +145,7 @@ module cmac_core(
                     .keylen(keylen),
 
                     .block(aes_block),
-                    .result(aes_result),
-                    .result_valid(aes_valid)
+                    .result(aes_result)
                    );
 
 
@@ -171,7 +164,6 @@ module cmac_core(
           k1_reg         <= 128'h0;
           k2_reg         <= 128'h0;
           result_reg     <= 128'h0;
-          valid_reg      <= 1'h0;
           ready_reg      <= 1'h1;
           cmac_ctrl_reg  <= CTRL_IDLE;
         end
@@ -188,9 +180,6 @@ module cmac_core(
 
           if (ready_we)
             ready_reg <= ready_new;
-
-          if (valid_we)
-            valid_reg <= valid_new;
 
           if (k1_k2_we)
             begin
@@ -310,8 +299,6 @@ module cmac_core(
       k1_k2_we          = 1'h0;
       ready_new         = 1'h0;
       ready_we          = 1'h0;
-      valid_new         = 1'h0;
-      valid_we          = 1'h0;
       cmac_ctrl_new     = CTRL_IDLE;
       cmac_ctrl_we      = 1'h0;
 
@@ -322,8 +309,6 @@ module cmac_core(
               begin
                 ready_new        = 1'h0;
                 ready_we         = 1'h1;
-                valid_new        = 1'h0;
-                valid_we         = 1'h1;
                 aes_init         = 1'h1;
                 reset_result_reg = 1'h1;
                 cmac_ctrl_new    = CTRL_INIT_CORE;
@@ -409,8 +394,6 @@ module cmac_core(
             if (aes_ready)
               begin
                 update_result_reg = 1'h1;
-                valid_new         = 1'h1;
-                valid_we          = 1'h1;
                 ready_new         = 1'h1;
                 ready_we          = 1'h1;
                 cmac_ctrl_new     = CTRL_IDLE;
