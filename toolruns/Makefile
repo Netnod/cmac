@@ -43,7 +43,7 @@ INV_SBOX_SRC=$(AES_CORE_SW_DIR)/aes_inv_sbox.v
 KEYMEM_SRC=$(AES_CORE_SW_DIR)/aes_key_mem.v
 ENCIPHER_SRC=$(AES_CORE_SW_DIR)/aes_encipher_block.v
 DECIPHER_SRC=$(AES_CORE_SW_DIR)/aes_decipher_block.v
-AES_CORE_SRC=$(AES_CORE_SW_DIR)/aes_core.v $(KEYMEM_SRC) $(SBOX_SRC) $(INV_SBOX_SRC) $(ENCIPHER_SRC) $(DECIPHER_SRC)
+AES_CORE_SRC=$(AES_CORE_SW_DIR)/aes_core.v $(KEYMEM_SRC) $(SBOX_SRC) $(ENCIPHER_SRC)
 
 
 CORE_SRC=../src/rtl/cmac_core.v $(AES_CORE_SRC)

@@ -110,9 +110,7 @@ module cmac_core(
   //----------------------------------------------------------------
   // Wires.
   //----------------------------------------------------------------
-  reg            aes_init;
   reg            aes_next;
-  wire           aes_encdec;
   wire           aes_ready;
   reg  [127 : 0] aes_block;
   wire [127 : 0] aes_result;
@@ -123,8 +121,6 @@ module cmac_core(
   //----------------------------------------------------------------
   // Concurrent connectivity for ports etc.
   //----------------------------------------------------------------
-  assign aes_encdec = 1'h1;
-
   assign result = result_reg;
   assign ready  = ready_reg;
 
@@ -136,8 +132,6 @@ module cmac_core(
                     .clk(clk),
                     .reset_n(reset_n),
 
-                    .encdec(aes_encdec),
-                    .init(aes_init),
                     .next(aes_next),
                     .ready(aes_ready),
 
@@ -291,7 +285,6 @@ module cmac_core(
     begin : cmac_ctrl
       block_we          = 1'h0;
       final_size_we     = 1'h0;
-      aes_init          = 1'h0;
       aes_next          = 1'h0;
       bmux_ctrl         = BMUX_ZERO;
       reset_result_reg  = 1'h0;
@@ -309,7 +302,6 @@ module cmac_core(
               begin
                 ready_new        = 1'h0;
                 ready_we         = 1'h1;
-                aes_init         = 1'h1;
                 reset_result_reg = 1'h1;
                 cmac_ctrl_new    = CTRL_INIT_CORE;
                 cmac_ctrl_we     = 1'h1;
