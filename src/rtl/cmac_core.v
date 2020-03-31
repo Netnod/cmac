@@ -42,19 +42,24 @@ module cmac_core(
                  input wire            clk,
                  input wire            reset_n,
 
-                 input wire [255 : 0]  key,
-                 input wire            keylen,
+                 input wire            mode,
 
-                 input wire [7 : 0]    final_size,
+                 input wire [255 : 0]  ecb_key,
+                 input wire            ecb_keylen,
+                 input wire            ecb_next,
+                 input wire [127 : 0]  ecb_block,
+                 output wire [127 : 0] ecb_result,
+                 output wire           ecb_ready,
 
-                 input wire            init,
-                 input wire            next,
-                 input wire            finalize,
-
-                 input wire [127 : 0]  block,
-
-                 output wire [127 : 0] result,
-                 output wire           ready
+                 input wire [255 : 0]  cmac_key,
+                 input wire            cmac_keylen,
+                 input wire [7 : 0]    cmac_final_size,
+                 input wire            cmac_init,
+                 input wire            cmac_next,
+                 input wire            cmac_finalize,
+                 input wire [127 : 0]  cmac_block,
+                 output wire [127 : 0] cmac_result,
+                 output wire           cmac_ready
                 );
 
 
@@ -73,6 +78,7 @@ module cmac_core(
   localparam CTRL_FINAL_INIT  = 5;
   localparam CTRL_FINAL_BLOCK = 6;
 
+  localparam CMAC_MODE        = 1'h1;
   localparam R128 = {120'h0, 8'b10000111};
   localparam AES_BLOCK_SIZE = 128;
 
@@ -89,6 +95,10 @@ module cmac_core(
   reg           ready_reg;
   reg           ready_new;
   reg           ready_we;
+
+  reg           mode_reg;
+
+  reg [127 : 0] ecb_block_reg;
 
   reg [127 : 0] block_reg;
   reg           block_we;
@@ -110,6 +120,11 @@ module cmac_core(
   //----------------------------------------------------------------
   // Wires.
   //----------------------------------------------------------------
+  reg            muxed_next;
+  reg            muxed_keylen;
+  reg [255 : 0]  muxed_key;
+  reg [127 : 0]  muxed_block;
+
   reg            aes_next;
   wire           aes_ready;
   reg  [127 : 0] aes_block;
@@ -121,8 +136,11 @@ module cmac_core(
   //----------------------------------------------------------------
   // Concurrent connectivity for ports etc.
   //----------------------------------------------------------------
-  assign result = result_reg;
-  assign ready  = ready_reg;
+  assign ecb_result  = aes_result;
+  assign ecb_ready   = aes_ready;
+
+  assign cmac_result = result_reg;
+  assign cmac_ready  = ready_reg;
 
 
   //----------------------------------------------------------------
@@ -132,13 +150,13 @@ module cmac_core(
                     .clk(clk),
                     .reset_n(reset_n),
 
-                    .next(aes_next),
+                    .next(muxed_next),
                     .ready(aes_ready),
 
-                    .key(key),
-                    .keylen(keylen),
+                    .key(muxed_key),
+                    .keylen(muxed_keylen),
 
-                    .block(aes_block),
+                    .block(muxed_block),
                     .result(aes_result)
                    );
 
@@ -153,21 +171,26 @@ module cmac_core(
     begin : reg_update
       if (!reset_n)
         begin
+          ecb_block_reg  <= 128'h0;
           block_reg      <= 128'h0;
           final_size_reg <= 8'h0;
           k1_reg         <= 128'h0;
           k2_reg         <= 128'h0;
           result_reg     <= 128'h0;
           ready_reg      <= 1'h1;
+          mode_reg       <= CMAC_MODE;
           cmac_ctrl_reg  <= CTRL_IDLE;
         end
       else
         begin
+          mode_reg      <= mode;
+          ecb_block_reg <= ecb_block;
+
           if (block_we)
-            block_reg <= block;
+            block_reg <= cmac_block;
 
           if (final_size_we)
-            final_size_reg <= final_size;
+            final_size_reg <= cmac_final_size;
 
           if (result_we)
             result_reg <= result_new;
@@ -185,6 +208,29 @@ module cmac_core(
             cmac_ctrl_reg <= cmac_ctrl_new;
         end
     end // reg_update
+
+
+  //----------------------------------------------------------------
+  // mode_mux
+  // Mux access to the AES core based on the block cipher mode.
+  //----------------------------------------------------------------
+  always @*
+    begin : mode_mux
+      if (mode_reg)
+        begin
+          muxed_next   = aes_next;
+          muxed_key    = cmac_key;
+          muxed_keylen = cmac_keylen;
+          muxed_block  = aes_block;
+        end
+      else
+        begin
+          muxed_next   = ecb_next;
+          muxed_key    = ecb_key;
+          muxed_keylen = ecb_keylen;
+          muxed_block  = ecb_block_reg;
+        end
+    end
 
 
   //----------------------------------------------------------------
@@ -298,32 +344,35 @@ module cmac_core(
       case (cmac_ctrl_reg)
         CTRL_IDLE:
           begin
-            if (init)
+            if (mode)
               begin
-                ready_new        = 1'h0;
-                ready_we         = 1'h1;
-                reset_result_reg = 1'h1;
-                cmac_ctrl_new    = CTRL_INIT_CORE;
-                cmac_ctrl_we     = 1'h1;
-              end
+                if (cmac_init)
+                  begin
+                    ready_new        = 1'h0;
+                    ready_we         = 1'h1;
+                    reset_result_reg = 1'h1;
+                    cmac_ctrl_new    = CTRL_INIT_CORE;
+                    cmac_ctrl_we     = 1'h1;
+                  end
 
-            if (next)
-              begin
-                block_we      = 1'h1;
-                ready_new     = 1'h0;
-                ready_we      = 1'h1;
-                cmac_ctrl_new = CTRL_NEXT_INIT;
-                cmac_ctrl_we  = 1'h1;
-              end
+                if (cmac_next)
+                  begin
+                    block_we      = 1'h1;
+                    ready_new     = 1'h0;
+                    ready_we      = 1'h1;
+                    cmac_ctrl_new = CTRL_NEXT_INIT;
+                    cmac_ctrl_we  = 1'h1;
+                  end
 
-            if (finalize)
-              begin
-                block_we      = 1'h1;
-                final_size_we = 1'h1;
-                ready_new     = 1'h0;
-                ready_we      = 1'h1;
-                cmac_ctrl_new = CTRL_FINAL_INIT;
-                cmac_ctrl_we  = 1'h1;
+                if (cmac_finalize)
+                  begin
+                    block_we      = 1'h1;
+                    final_size_we = 1'h1;
+                    ready_new     = 1'h0;
+                    ready_we      = 1'h1;
+                    cmac_ctrl_new = CTRL_FINAL_INIT;
+                    cmac_ctrl_we  = 1'h1;
+                  end
               end
           end
 

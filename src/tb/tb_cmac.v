@@ -62,6 +62,7 @@ module tb_cmac();
 
   localparam ADDR_CONFIG      = 8'h09;
   localparam CTRL_KEYLEN_BIT  = 0;
+  localparam CTRL_MODE_BIT    = 0;
 
   localparam ADDR_STATUS      = 8'h0a;
   localparam STATUS_READY_BIT = 0;
@@ -91,6 +92,8 @@ module tb_cmac();
   localparam AES_128_BIT_KEY = 0;
   localparam AES_256_BIT_KEY = 1;
 
+  localparam ECB_MODE  = 1'h0;
+  localparam CMAC_MODE = 1'h1;
 
   localparam AES_DECIPHER = 1'b0;
   localparam AES_ENCIPHER = 1'b1;
@@ -407,17 +410,17 @@ module tb_cmac();
 
 
   //----------------------------------------------------------------
-  // init_key()
+  // write_key_mode()
   //
-  // init the key in the dut by writing the given key and
-  // key length and then trigger init processing.
+  // Write the given key and mode including key length.
   //----------------------------------------------------------------
-  task init_key(input [255 : 0] key, input key_length);
+  task write_key_mode(input [255 : 0] key, input mode, input key_length);
     begin
       if (DEBUG)
         begin
-          $display("key length: 0x%01x", key_length);
-          $display("Initializing key expansion for key: 0x%016x", key);
+          $display("Writing key, keylength and mode:");
+          $display("length: 0x%01x, mode: 0x%01x", key_length, mode);
+          $display("key 0x%032x", key);
         end
 
       write_word(ADDR_KEY0, key[255  : 224]);
@@ -428,8 +431,25 @@ module tb_cmac();
       write_word(ADDR_KEY5, key[95   :  64]);
       write_word(ADDR_KEY6, key[63   :  32]);
       write_word(ADDR_KEY7, key[31   :   0]);
+      write_word(ADDR_CONFIG, {mode, key_length});
+    end
+  endtask // init_key
 
-      write_word(ADDR_CONFIG, key_length);
+
+  //----------------------------------------------------------------
+  // init_key()
+  //
+  // init the key in the dut by writing the given key and
+  // key length and then trigger init processing.
+  //----------------------------------------------------------------
+  task init_key(input [255 : 0] key, input mode, input key_length);
+    begin
+      write_key_mode(key, mode, key_length);
+
+      if (DEBUG)
+        begin
+          $display("Initializing key expansion for key: 0x%016x", key);
+        end
 
       write_word(ADDR_CTRL, 8'h01);
     end
@@ -556,8 +576,7 @@ module tb_cmac();
       tc_correct = 1;
 
       $display("TC2: Check that k1 and k2 subkeys are correctly generated.");
-      init_key(256'h2b7e1516_28aed2a6_abf71588_09cf4f3c_00000000_00000000_00000000_00000000,
-               AES_128_BIT_KEY);
+      init_key(256'h2b7e1516_28aed2a6_abf71588_09cf4f3c_00000000_00000000_00000000_00000000, CMAC_MODE, AES_128_BIT_KEY);
       wait_ready();
 
       if (DEBUG)
@@ -605,8 +624,7 @@ module tb_cmac();
 
       $display("TC3: Check that correct ICV is generated for an empty message.");
 
-      init_key(256'h2b7e1516_28aed2a6_abf71588_09cf4f3c_00000000_00000000_00000000_00000000,
-               AES_128_BIT_KEY);
+      init_key(256'h2b7e1516_28aed2a6_abf71588_09cf4f3c_00000000_00000000_00000000_00000000, CMAC_MODE, AES_128_BIT_KEY);
       wait_ready();
 
       $display("TC3: cmac initialized. Now for the final, empty message block.");
@@ -651,8 +669,7 @@ module tb_cmac();
 
       $display("TC4: Check that correct ICV is generated for a single block message.");
 
-      init_key(256'h2b7e1516_28aed2a6_abf71588_09cf4f3c_00000000_00000000_00000000_00000000,
-               AES_128_BIT_KEY);
+      init_key(256'h2b7e1516_28aed2a6_abf71588_09cf4f3c_00000000_00000000_00000000_00000000, CMAC_MODE, AES_128_BIT_KEY);
       wait_ready();
 
       $display("TC4: cmac initialized. Now for the final, full message block.");
@@ -698,8 +715,7 @@ module tb_cmac();
       tc_correct = 1;
 
       $display("TC5: Check that correct ICV is generated for a two and a half block message.");
-      init_key(256'h2b7e1516_28aed2a6_abf71588_09cf4f3c_00000000_00000000_00000000_00000000,
-               AES_128_BIT_KEY);
+      init_key(256'h2b7e1516_28aed2a6_abf71588_09cf4f3c_00000000_00000000_00000000_00000000, CMAC_MODE, AES_128_BIT_KEY);
       wait_ready();
 
       $display("TC5: cmac initialized. Now we process two full blocks.");
@@ -752,8 +768,7 @@ module tb_cmac();
       tc_correct = 1;
 
       $display("TC6: Check that correct ICV is generated for a four block message.");
-      init_key(256'h2b7e1516_28aed2a6_abf71588_09cf4f3c_00000000_00000000_00000000_00000000,
-               AES_128_BIT_KEY);
+      init_key(256'h2b7e1516_28aed2a6_abf71588_09cf4f3c_00000000_00000000_00000000_00000000, CMAC_MODE, AES_128_BIT_KEY);
       wait_ready();
 
       $display("TC6: cmac initialized. Now we process four full blocks.");
@@ -809,8 +824,7 @@ module tb_cmac();
       tc_correct = 1;
 
       $display("TC7: Check that correct ICV is generated for a four block message usint a 256 bit key.");
-      init_key(256'h603deb10_15ca71be_2b73aef0_857d7781_1f352c07_3b6108d7_2d9810a3_0914dff4,
-               AES_256_BIT_KEY);
+      init_key(256'h603deb10_15ca71be_2b73aef0_857d7781_1f352c07_3b6108d7_2d9810a3_0914dff4, CMAC_MODE, AES_256_BIT_KEY);
       wait_ready();
 
       $display("TC7: cmac initialized. Now we process four full blocks.");
@@ -851,6 +865,46 @@ module tb_cmac();
 
 
   //----------------------------------------------------------------
+  // tc8_ecb_message
+  //
+  // Check that the correct ciphertext is generated when using
+  // ECB mode.
+  //----------------------------------------------------------------
+  task tc8_ecb_message;
+    begin : tc8
+      integer i;
+
+      inc_tc_ctr();
+      tc_correct = 1;
+
+      $display("TC8: Check that correct cipheretxt is generated in ECB mode.");
+
+      write_key_mode(256'h2b7e151628aed2a6abf7158809cf4f3c00000000000000000000000000000000, ECB_MODE, AES_128_BIT_KEY);
+      write_block(128'h6bc1bee22e409f96e93d7e117393172a);
+      write_word(ADDR_CTRL, 32'h2);
+      wait_ready();
+
+      $display("TC8: ECB encryption finished.");
+      read_result();
+
+      if (result_data != 128'h3ad77bb40d7a3660a89ecaf32466ef97)
+        begin
+          tc_correct = 0;
+          inc_error_ctr();
+          $display("TC8: Error - Expected 0x3ad77bb40d7a3660a89ecaf32466ef97, got 0x%032x",
+                   result_data);
+        end
+
+      if (tc_correct)
+        $display("TC8: SUCCESS - Correct ciphertext generated.");
+      else
+        $display("TC4: NO SUCCESS - Incorrect ciphertext generated.");
+      $display("");
+    end
+  endtask // tc8
+
+
+  //----------------------------------------------------------------
   // main
   //
   // The main test functionality.
@@ -869,6 +923,7 @@ module tb_cmac();
       tc5_two_and_a_half_block_message();
       tc6_four_block_message();
       tc7_key256_four_block_message();
+      tc8_ecb_message();
 
       display_test_results();
 

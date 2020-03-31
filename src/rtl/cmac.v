@@ -61,6 +61,7 @@ module cmac(
 
   localparam ADDR_CONFIG       = 8'h09;
   localparam CONFIG_KEYLEN_BIT = 0;
+  localparam CONFIG_MODE_BIT   = 1;
 
   localparam ADDR_STATUS       = 8'h0a;
   localparam STATUS_READY_BIT  = 0;
@@ -80,6 +81,8 @@ module cmac(
   localparam ADDR_RESULT2      = 8'h32;
   localparam ADDR_RESULT3      = 8'h33;
 
+  localparam ECB_MODE          = 1'h0;
+  localparam CMAC_MODE         = 1'h1;
 
   localparam CORE_NAME0        = 32'h636d6163; // "cmac"
   localparam CORE_NAME1        = 32'h2d616573; // "-aes"
@@ -91,6 +94,8 @@ module cmac(
   //----------------------------------------------------------------
   reg           keylen_reg;
   reg           config_we;
+
+  reg           mode_reg;
 
   reg [7 : 0]   final_size_reg;
   reg           final_size_we;
@@ -119,6 +124,9 @@ module cmac(
   wire [127 : 0] core_block;
   wire [127 : 0] core_result;
 
+  wire           ecb_ready;
+  wire [127 : 0] ecb_result;
+
 
   //----------------------------------------------------------------
   // Concurrent connectivity for ports etc.
@@ -139,18 +147,24 @@ module cmac(
                       .clk(clk),
                       .reset_n(reset_n),
 
-                      .key(core_key),
-                      .keylen(keylen_reg),
-                      .final_size(final_size_reg),
+                      .mode(mode_reg),
 
-                      .init(init_reg),
-                      .next(next_reg),
-                      .finalize(finalize_reg),
+                      .ecb_key(core_key),
+                      .ecb_keylen(keylen_reg),
+                      .ecb_next(next_reg),
+                      .ecb_block(core_block),
+                      .ecb_result(ecb_result),
+                      .ecb_ready(ecb_ready),
 
-                      .block(core_block),
-
-                      .result(core_result),
-                      .ready(core_ready)
+                      .cmac_key(core_key),
+                      .cmac_keylen(keylen_reg),
+                      .cmac_final_size(final_size_reg),
+                      .cmac_init(init_reg),
+                      .cmac_next(next_reg),
+                      .cmac_finalize(finalize_reg),
+                      .cmac_block(core_block),
+                      .cmac_result(core_result),
+                      .cmac_ready(core_ready)
                      );
 
 
@@ -176,6 +190,7 @@ module cmac(
           final_size_reg <= 8'h0;
           init_reg       <= 1'h0;
           next_reg       <= 1'h0;
+          mode_reg       <= CMAC_MODE;
           finalize_reg   <= 1'h0;
         end
       else
@@ -187,6 +202,7 @@ module cmac(
           if (config_we)
             begin
               keylen_reg <= write_data[CONFIG_KEYLEN_BIT];
+              mode_reg   <= write_data[CONFIG_MODE_BIT];
             end
 
           if (final_size_we)
@@ -236,6 +252,7 @@ module cmac(
                   end
 
                 ADDR_CONFIG:     config_we     = 1'h1;
+
                 ADDR_FINAL_SIZE: final_size_we = 1'h1;
 
                 default:
@@ -247,21 +264,30 @@ module cmac(
           else
             begin
               case (address)
-                ADDR_NAME0:      tmp_read_data = CORE_NAME0;
-                ADDR_NAME1:      tmp_read_data = CORE_NAME1;
-                ADDR_VERSION:    tmp_read_data = CORE_VERSION;
-                ADDR_CTRL:       tmp_read_data = {31'h0, keylen_reg};
-                ADDR_STATUS:     tmp_read_data = {31'h0, core_ready};
-                ADDR_FINAL_SIZE: tmp_read_data = {24'h0, final_size_reg};
-                ADDR_RESULT0:    tmp_read_data = core_result[127 : 96];
-                ADDR_RESULT1:    tmp_read_data = core_result[95 : 64];
-                ADDR_RESULT2:    tmp_read_data = core_result[63 : 32];
-                ADDR_RESULT3:    tmp_read_data = core_result[31 : 0];
+                ADDR_NAME0:   tmp_read_data = CORE_NAME0;
+                ADDR_NAME1:   tmp_read_data = CORE_NAME1;
+                ADDR_VERSION: tmp_read_data = CORE_VERSION;
+
+                ADDR_STATUS:
+                  begin
+                    if (mode_reg)
+                      tmp_read_data = {31'h0, core_ready};
+                    else
+                      tmp_read_data = {31'h0, ecb_ready};
+                  end
 
                 default:
                   begin
                   end
               endcase // case (address)
+
+              if ((address >= ADDR_RESULT0) && (address <= ADDR_RESULT3))
+                begin
+                  if (mode_reg)
+                    tmp_read_data = core_result[(3 - (address - ADDR_RESULT0)) * 32 +: 32];
+                  else
+                    tmp_read_data = ecb_result[(3 - (address - ADDR_RESULT0)) * 32 +: 32];
+                end
             end
         end
     end // addr_decoder
