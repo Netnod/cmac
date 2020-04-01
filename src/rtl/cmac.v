@@ -95,7 +95,7 @@ module cmac(
   reg           keylen_reg;
   reg           config_we;
 
-  reg           mode_reg;
+  reg           cipher_mode_reg;
 
   reg [7 : 0]   final_size_reg;
   reg           final_size_we;
@@ -147,7 +147,7 @@ module cmac(
                       .clk(clk),
                       .reset_n(reset_n),
 
-                      .mode(mode_reg),
+                      .cipher_mode(cipher_mode_reg),
 
                       .ecb_key(core_key),
                       .ecb_keylen(keylen_reg),
@@ -186,12 +186,12 @@ module cmac(
           for (i = 0; i < 8; i = i + 1)
             key_reg[i] <= 32'h0;
 
-          keylen_reg     <= 1'h0;
-          final_size_reg <= 8'h0;
-          init_reg       <= 1'h0;
-          next_reg       <= 1'h0;
-          mode_reg       <= CMAC_MODE;
-          finalize_reg   <= 1'h0;
+          keylen_reg      <= 1'h0;
+          final_size_reg  <= 8'h0;
+          init_reg        <= 1'h0;
+          next_reg        <= 1'h0;
+          cipher_mode_reg <= CMAC_MODE;
+          finalize_reg    <= 1'h0;
         end
       else
         begin
@@ -201,8 +201,8 @@ module cmac(
 
           if (config_we)
             begin
-              keylen_reg <= write_data[CONFIG_KEYLEN_BIT];
-              mode_reg   <= write_data[CONFIG_MODE_BIT];
+              keylen_reg      <= write_data[CONFIG_KEYLEN_BIT];
+              cipher_mode_reg <= write_data[CONFIG_MODE_BIT];
             end
 
           if (final_size_we)
@@ -270,7 +270,7 @@ module cmac(
 
                 ADDR_STATUS:
                   begin
-                    if (mode_reg)
+                    if (cipher_mode_reg)
                       tmp_read_data = {31'h0, core_ready};
                     else
                       tmp_read_data = {31'h0, ecb_ready};
@@ -283,7 +283,7 @@ module cmac(
 
               if ((address >= ADDR_RESULT0) && (address <= ADDR_RESULT3))
                 begin
-                  if (mode_reg)
+                  if (cipher_mode_reg)
                     tmp_read_data = core_result[(3 - (address - ADDR_RESULT0)) * 32 +: 32];
                   else
                     tmp_read_data = ecb_result[(3 - (address - ADDR_RESULT0)) * 32 +: 32];

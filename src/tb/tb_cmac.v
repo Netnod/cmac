@@ -412,14 +412,14 @@ module tb_cmac();
   //----------------------------------------------------------------
   // write_key_mode()
   //
-  // Write the given key and mode including key length.
+  // Write the given key and cipher mode including key length.
   //----------------------------------------------------------------
-  task write_key_mode(input [255 : 0] key, input mode, input key_length);
+  task write_key_mode(input [255 : 0] key, input cipher_mode, input key_length);
     begin
       if (DEBUG)
         begin
-          $display("Writing key, keylength and mode:");
-          $display("length: 0x%01x, mode: 0x%01x", key_length, mode);
+          $display("Writing key, keylength and cipher mode:");
+          $display("length: 0x%01x, cipher mode: 0x%01x", key_length, cipher_mode);
           $display("key 0x%032x", key);
         end
 
@@ -431,7 +431,7 @@ module tb_cmac();
       write_word(ADDR_KEY5, key[95   :  64]);
       write_word(ADDR_KEY6, key[63   :  32]);
       write_word(ADDR_KEY7, key[31   :   0]);
-      write_word(ADDR_CONFIG, {mode, key_length});
+      write_word(ADDR_CONFIG, {cipher_mode, key_length});
     end
   endtask // init_key
 
@@ -439,12 +439,12 @@ module tb_cmac();
   //----------------------------------------------------------------
   // init_key()
   //
-  // init the key in the dut by writing the given key and
-  // key length and then trigger init processing.
+  // init the key in the dut by writing the given key,
+  // key length and cipher mode. And then trigger init processing.
   //----------------------------------------------------------------
-  task init_key(input [255 : 0] key, input mode, input key_length);
+  task init_key(input [255 : 0] key, input cipher_mode, input key_length);
     begin
-      write_key_mode(key, mode, key_length);
+      write_key_mode(key, cipher_mode, key_length);
 
       if (DEBUG)
         begin

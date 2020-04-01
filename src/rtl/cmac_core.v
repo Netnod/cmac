@@ -42,7 +42,7 @@ module cmac_core(
                  input wire            clk,
                  input wire            reset_n,
 
-                 input wire            mode,
+                 input wire            cipher_mode,
 
                  input wire [255 : 0]  ecb_key,
                  input wire            ecb_keylen,
@@ -96,7 +96,7 @@ module cmac_core(
   reg           ready_new;
   reg           ready_we;
 
-  reg           mode_reg;
+  reg           cipher_mode_reg;
 
   reg [127 : 0] ecb_block_reg;
 
@@ -171,20 +171,20 @@ module cmac_core(
     begin : reg_update
       if (!reset_n)
         begin
-          ecb_block_reg  <= 128'h0;
-          block_reg      <= 128'h0;
-          final_size_reg <= 8'h0;
-          k1_reg         <= 128'h0;
-          k2_reg         <= 128'h0;
-          result_reg     <= 128'h0;
-          ready_reg      <= 1'h1;
-          mode_reg       <= CMAC_MODE;
-          cmac_ctrl_reg  <= CTRL_IDLE;
+          ecb_block_reg   <= 128'h0;
+          block_reg       <= 128'h0;
+          final_size_reg  <= 8'h0;
+          k1_reg          <= 128'h0;
+          k2_reg          <= 128'h0;
+          result_reg      <= 128'h0;
+          ready_reg       <= 1'h1;
+          cipher_mode_reg <= CMAC_MODE;
+          cmac_ctrl_reg   <= CTRL_IDLE;
         end
       else
         begin
-          mode_reg      <= mode;
-          ecb_block_reg <= ecb_block;
+          cipher_mode_reg <= cipher_mode;
+          ecb_block_reg   <= ecb_block;
 
           if (block_we)
             block_reg <= cmac_block;
@@ -211,12 +211,12 @@ module cmac_core(
 
 
   //----------------------------------------------------------------
-  // mode_mux
+  // cipher_mode_mux
   // Mux access to the AES core based on the block cipher mode.
   //----------------------------------------------------------------
   always @*
-    begin : mode_mux
-      if (mode_reg)
+    begin : cipher_mode_mux
+      if (cipher_mode_reg)
         begin
           muxed_next   = aes_next;
           muxed_key    = cmac_key;
@@ -344,7 +344,7 @@ module cmac_core(
       case (cmac_ctrl_reg)
         CTRL_IDLE:
           begin
-            if (mode)
+            if (cipher_mode)
               begin
                 if (cmac_init)
                   begin

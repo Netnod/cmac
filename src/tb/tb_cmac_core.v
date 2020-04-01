@@ -72,7 +72,7 @@ module tb_cmac_core();
   reg            tb_clk;
   reg            tb_reset_n;
 
-  reg            tb_mode;
+  reg            tb_cipher_mode;
   reg [255 : 0]  tb_ecb_key;
   reg            tb_ecb_keylen;
   reg            tb_ecb_next;
@@ -98,7 +98,7 @@ module tb_cmac_core();
                 .clk(tb_clk),
                 .reset_n(tb_reset_n),
 
-                .mode(tb_mode),
+                .cipher_mode(tb_cipher_mode),
 
                 .ecb_key(tb_ecb_key),
                 .ecb_keylen(tb_ecb_keylen),
@@ -164,7 +164,7 @@ module tb_cmac_core();
     begin
       $display("cycle:  0x%016x", cycle_ctr);
       $display("Inputs and outputs:");
-      $display("mode: 0x%01x", dut.mode);
+      $display("cipher mode: 0x%01x", dut.cipher_mode);
       $display("ECB:");
       $display("next = 0x%01x", dut.ecb_next);
       $display("config: keylen = 0x%01x", dut.ecb_keylen);
@@ -233,27 +233,27 @@ module tb_cmac_core();
   //----------------------------------------------------------------
   task init_sim;
     begin
-      cycle_ctr     = 0;
-      error_ctr     = 0;
-      tc_ctr        = 0;
-      debug_ctrl    = 0;
+      cycle_ctr      = 0;
+      error_ctr      = 0;
+      tc_ctr         = 0;
+      debug_ctrl     = 0;
 
-      tb_clk        = 1'h0;
-      tb_reset_n    = 1'h1;
+      tb_clk         = 1'h0;
+      tb_reset_n     = 1'h1;
 
-      tb_mode       = 1'h1;
-      tb_ecb_key    = 256'h0;
-      tb_ecb_keylen = 1'h0;
-      tb_ecb_next   = 1'h0;
-      tb_ecb_block  = 128'h0;
+      tb_cipher_mode = 1'h1;
+      tb_ecb_key     = 256'h0;
+      tb_ecb_keylen  = 1'h0;
+      tb_ecb_next    = 1'h0;
+      tb_ecb_block   = 128'h0;
 
-      tb_key        = 256'h0;
-      tb_keylen     = 1'h0;
-      tb_final_size = 8'h0;
-      tb_init       = 1'h0;
-      tb_next       = 1'h0;
-      tb_finalize   = 1'h0;
-      tb_block      = 128'h0;
+      tb_key         = 256'h0;
+      tb_keylen      = 1'h0;
+      tb_final_size  = 8'h0;
+      tb_init        = 1'h0;
+      tb_next        = 1'h0;
+      tb_finalize    = 1'h0;
+      tb_block       = 128'h0;
     end
   endtask // init_sim
 
@@ -345,12 +345,12 @@ module tb_cmac_core();
       debug_ctrl = 1;
 
       $display("TC2: Check that k1 and k2 subkeys are correctly generated.");
-      tb_mode   = 1'h1;
-      tb_key    = 256'h2b7e1516_28aed2a6_abf71588_09cf4f3c_00000000_00000000_00000000_00000000;
-      tb_keylen = 1'h0;
-      tb_init   = 1'h1;
+      tb_cipher_mode = 1'h1;
+      tb_key         = 256'h2b7e1516_28aed2a6_abf71588_09cf4f3c_00000000_00000000_00000000_00000000;
+      tb_keylen      = 1'h0;
+      tb_init        = 1'h1;
       #(2 * CLK_PERIOD);
-      tb_init   = 1'h0;
+      tb_init        = 1'h0;
       wait_ready();
 
       #(2 * CLK_PERIOD);
@@ -395,12 +395,12 @@ module tb_cmac_core();
 
       $display("TC3: Check that correct ICV is generated for an empty message.");
 
-      tb_mode   = 1'h1;
-      tb_key    = 256'h2b7e1516_28aed2a6_abf71588_09cf4f3c_00000000_00000000_00000000_00000000;
-      tb_keylen = 1'h0;
-      tb_init   = 1'h1;
+      tb_cipher_mode = 1'h1;
+      tb_key         = 256'h2b7e1516_28aed2a6_abf71588_09cf4f3c_00000000_00000000_00000000_00000000;
+      tb_keylen      = 1'h0;
+      tb_init        = 1'h1;
       #(2 * CLK_PERIOD);
-      tb_init   = 1'h0;
+      tb_init        = 1'h0;
       wait_ready();
 
       $display("TC3: cmac_core initialized. Now for the final, empty message block.");
@@ -448,12 +448,12 @@ module tb_cmac_core();
 
       $display("TC4: Check that correct ICV is generated for a single block message.");
 
-      tb_mode   = 1'h1;
-      tb_key    = 256'h2b7e1516_28aed2a6_abf71588_09cf4f3c_00000000_00000000_00000000_00000000;
-      tb_keylen = 1'h0;
-      tb_init   = 1'h1;
+      tb_cipher_mode = 1'h1;
+      tb_key         = 256'h2b7e1516_28aed2a6_abf71588_09cf4f3c_00000000_00000000_00000000_00000000;
+      tb_keylen      = 1'h0;
+      tb_init        = 1'h1;
       #(2 * CLK_PERIOD);
-      tb_init   = 1'h0;
+      tb_init        = 1'h0;
       wait_ready();
 
       $display("TC4: cmac_core initialized. Now for the final, full message block.");
@@ -502,12 +502,12 @@ module tb_cmac_core();
       debug_ctrl = 1;
 
       $display("TC5: Check that correct ICV is generated for a two and a half block message.");
-      tb_mode   = 1'h1;
-      tb_key    = 256'h2b7e1516_28aed2a6_abf71588_09cf4f3c_00000000_00000000_00000000_00000000;
-      tb_keylen = 1'h0;
-      tb_init   = 1'h1;
+      tb_cipher_mode = 1'h1;
+      tb_key         = 256'h2b7e1516_28aed2a6_abf71588_09cf4f3c_00000000_00000000_00000000_00000000;
+      tb_keylen      = 1'h0;
+      tb_init        = 1'h1;
       #(2 * CLK_PERIOD);
-      tb_init   = 1'h0;
+      tb_init        = 1'h0;
       wait_ready();
       $display("TC5: cmac_core initialized. Now we process two full blocks.");
 
@@ -569,12 +569,12 @@ module tb_cmac_core();
       debug_ctrl = 1;
 
       $display("TC6: Check that correct ICV is generated for a four block message.");
-      tb_mode   = 1'h1;
-      tb_key    = 256'h2b7e1516_28aed2a6_abf71588_09cf4f3c_00000000_00000000_00000000_00000000;
-      tb_keylen = 1'h0;
-      tb_init   = 1'h1;
+      tb_cipher_mode = 1'h1;
+      tb_key         = 256'h2b7e1516_28aed2a6_abf71588_09cf4f3c_00000000_00000000_00000000_00000000;
+      tb_keylen      = 1'h0;
+      tb_init        = 1'h1;
       #(2 * CLK_PERIOD);
-      tb_init   = 1'h0;
+      tb_init        = 1'h0;
       wait_ready();
       $display("TC6: cmac_core initialized. Now we process four full blocks.");
 
@@ -639,12 +639,12 @@ module tb_cmac_core();
       debug_ctrl = 1;
 
       $display("TC7: Check that correct ICV is generated for a four block message usint a 256 bit key.");
-      tb_mode   = 1'h1;
-      tb_key    = 256'h603deb10_15ca71be_2b73aef0_857d7781_1f352c07_3b6108d7_2d9810a3_0914dff4;
-      tb_keylen = 1'h1;
-      tb_init   = 1'h1;
+      tb_cipher_mode = 1'h1;
+      tb_key         = 256'h603deb10_15ca71be_2b73aef0_857d7781_1f352c07_3b6108d7_2d9810a3_0914dff4;
+      tb_keylen      = 1'h1;
+      tb_init        = 1'h1;
       #(2 * CLK_PERIOD);
-      tb_init   = 1'h0;
+      tb_init        = 1'h0;
       wait_ready();
       $display("TC7: cmac_core initialized. Now we process four full blocks.");
 
@@ -708,12 +708,12 @@ module tb_cmac_core();
 
       $display("TC8: Check that correct ICV is generated for a single block, all zero message.");
 
-      tb_mode   = 1'h1;
-      tb_key    = 256'hfffefdfc_fbfaf9f8_f7f6f5f4_f3f2f1f0_f0f1f2f3_f4f5f6f7_f8f9fafb_fcfdfeff;
-      tb_keylen = 1'h0;
-      tb_init   = 1'h1;
+      tb_cipher_mode = 1'h1;
+      tb_key         = 256'hfffefdfc_fbfaf9f8_f7f6f5f4_f3f2f1f0_f0f1f2f3_f4f5f6f7_f8f9fafb_fcfdfeff;
+      tb_keylen      = 1'h0;
+      tb_init        = 1'h1;
       #(2 * CLK_PERIOD);
-      tb_init   = 1'h0;
+      tb_init        = 1'h0;
       wait_ready();
 
       $display("TC8: cmac_core initialized. Now for the final, full message block.");
@@ -760,13 +760,13 @@ module tb_cmac_core();
       debug_ctrl = 1;
 
       $display("TC9: Check that we can use the core in ECB mode too.");
-      tb_mode       = 1'h0;
-      tb_ecb_key    = 256'h2b7e151628aed2a6abf7158809cf4f3c00000000000000000000000000000000;
-      tb_ecb_keylen = 1'h0;
-      tb_ecb_block  = 128'h6bc1bee22e409f96e93d7e117393172a;
-      tb_ecb_next   = 1'h1;
+      tb_cipher_mode = 1'h0;
+      tb_ecb_key     = 256'h2b7e151628aed2a6abf7158809cf4f3c00000000000000000000000000000000;
+      tb_ecb_keylen  = 1'h0;
+      tb_ecb_block   = 128'h6bc1bee22e409f96e93d7e117393172a;
+      tb_ecb_next    = 1'h1;
       #(2 * CLK_PERIOD);
-      tb_ecb_next   = 1'h0;
+      tb_ecb_next    = 1'h0;
       wait_ecb_ready();
 
       $display("TC9: cmac_core finished.");
