@@ -89,8 +89,8 @@ module cmac_core(
   reg [127 : 0] result_reg;
   reg [127 : 0] result_new;
   reg           result_we;
-  reg           reset_result_reg;
-  reg           update_result_reg;
+  reg           result_reg_reset;
+  reg           result_reg_update;
 
   reg           ready_reg;
   reg           ready_new;
@@ -105,6 +105,9 @@ module cmac_core(
 
   reg [7 : 0]   final_size_reg;
   reg           final_size_we;
+
+  reg [255 : 0] old_key_reg;
+  reg           old_key_we;
 
   reg [127 : 0] k1_reg;
   reg [127 : 0] k1_new;
@@ -171,15 +174,16 @@ module cmac_core(
     begin : reg_update
       if (!reset_n)
         begin
-          ecb_block_reg   <= 128'h0;
-          block_reg       <= 128'h0;
-          final_size_reg  <= 8'h0;
-          k1_reg          <= 128'h0;
-          k2_reg          <= 128'h0;
-          result_reg      <= 128'h0;
-          ready_reg       <= 1'h1;
-          cipher_mode_reg <= CMAC_MODE;
-          cmac_ctrl_reg   <= CTRL_IDLE;
+          ecb_block_reg    <= 128'h0;
+          block_reg        <= 128'h0;
+          final_size_reg   <= 8'h0;
+          old_key_reg      <= 256'h1;
+          k1_reg           <= 128'h0;
+          k2_reg           <= 128'h0;
+          result_reg       <= 128'h0;
+          ready_reg        <= 1'h1;
+          cipher_mode_reg  <= CMAC_MODE;
+          cmac_ctrl_reg    <= CTRL_IDLE;
         end
       else
         begin
@@ -188,6 +192,9 @@ module cmac_core(
 
           if (block_we)
             block_reg <= cmac_block;
+
+          if (old_key_we)
+            old_key_reg <= cmac_key;
 
           if (final_size_we)
             final_size_reg <= cmac_final_size;
@@ -250,10 +257,10 @@ module cmac_core(
       result_we  = 0;
 
       // Handle result reg updates and clear
-      if (reset_result_reg)
+      if (result_reg_reset)
         result_we  = 1'h1;
 
-      if (update_result_reg)
+      if (result_reg_update)
         begin
           result_new = aes_result;
           result_we  = 1'h1;
@@ -333,9 +340,10 @@ module cmac_core(
       final_size_we     = 1'h0;
       aes_next          = 1'h0;
       bmux_ctrl         = BMUX_ZERO;
-      reset_result_reg  = 1'h0;
-      update_result_reg = 1'h0;
+      result_reg_reset  = 1'h0;
+      result_reg_update = 1'h0;
       k1_k2_we          = 1'h0;
+      old_key_we        = 1'h0;
       ready_new         = 1'h0;
       ready_we          = 1'h0;
       cmac_ctrl_new     = CTRL_IDLE;
@@ -348,11 +356,15 @@ module cmac_core(
               begin
                 if (cmac_init)
                   begin
-                    ready_new        = 1'h0;
-                    ready_we         = 1'h1;
-                    reset_result_reg = 1'h1;
-                    cmac_ctrl_new    = CTRL_INIT_CORE;
-                    cmac_ctrl_we     = 1'h1;
+                    result_reg_reset = 1'h1;
+                    if (cmac_key != old_key_reg)
+                      begin
+                        ready_new        = 1'h0;
+                        ready_we         = 1'h1;
+                        old_key_we       = 1'h1;
+                        cmac_ctrl_new    = CTRL_INIT_CORE;
+                        cmac_ctrl_we     = 1'h1;
+                      end
                   end
 
                 if (cmac_next)
@@ -391,11 +403,11 @@ module cmac_core(
           begin
             if (aes_ready)
               begin
-                ready_new     = 1'h1;
-                ready_we      = 1'h1;
-                k1_k2_we      = 1'h1;
-                cmac_ctrl_new = CTRL_IDLE;
-                cmac_ctrl_we  = 1'h1;
+                ready_new       = 1'h1;
+                ready_we        = 1'h1;
+                k1_k2_we        = 1'h1;
+                cmac_ctrl_new   = CTRL_IDLE;
+                cmac_ctrl_we    = 1'h1;
               end
           end
 
@@ -412,7 +424,7 @@ module cmac_core(
             bmux_ctrl = BMUX_MESSAGE;
             if (aes_ready)
               begin
-                update_result_reg = 1'h1;
+                result_reg_update = 1'h1;
                 ready_new         = 1'h1;
                 ready_we          = 1'h1;
                 cmac_ctrl_new     = CTRL_IDLE;
@@ -434,7 +446,7 @@ module cmac_core(
             bmux_ctrl = BMUX_TWEAK;
             if (aes_ready)
               begin
-                update_result_reg = 1'h1;
+                result_reg_update = 1'h1;
                 ready_new         = 1'h1;
                 ready_we          = 1'h1;
                 cmac_ctrl_new     = CTRL_IDLE;
